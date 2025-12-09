@@ -21,12 +21,29 @@ export async function setRLSContext(
   isSystem: boolean = false
 ): Promise<void> {
   try {
+    // Sanitizar inputs para prevenir SQL injection
+    const sanitizedUserId = userId.replace(/'/g, "''");
+    const sanitizedRole = role.replace(/'/g, "''");
+    
     await prisma.$executeRawUnsafe(
-      `SELECT set_rls_context('${userId}', '${role}', ${isSystem})`
+      `SELECT set_rls_context('${sanitizedUserId}', '${sanitizedRole}', ${isSystem})`
     );
+    
+    console.log(`[RLS] Contexto configurado: userId=${userId}, role=${role}, isSystem=${isSystem}`);
   } catch (error) {
-    console.error('[RLS] Erro ao configurar contexto:', error);
-    throw new Error('Falha ao configurar contexto de segurança');
+    console.error('[RLS] ❌ Erro ao configurar contexto:', error);
+    console.error('[RLS] Tentando configuração de fallback...');
+    
+    // Fallback: tentar configurar diretamente via set_config
+    try {
+      await prisma.$executeRawUnsafe(`SET LOCAL app.user_id = '${userId.replace(/'/g, "''")}'`);
+      await prisma.$executeRawUnsafe(`SET LOCAL app.role = '${role.replace(/'/g, "''")}'`);
+      await prisma.$executeRawUnsafe(`SET LOCAL app.system = '${isSystem}'`);
+      console.log('[RLS] ✅ Fallback bem-sucedido');
+    } catch (fallbackError) {
+      console.error('[RLS] ❌ Fallback também falhou:', fallbackError);
+      throw new Error('Falha ao configurar contexto de segurança');
+    }
   }
 }
 
