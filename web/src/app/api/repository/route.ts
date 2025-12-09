@@ -1,5 +1,5 @@
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { withRLS } from '@/lib/middleware/rls';
@@ -9,9 +9,9 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'
 
-export async function GET(request: Request) {
-  return withPerformanceTracking(async (request) => {
-    return withRLS(request, async (request) => {
+export async function GET(request: NextRequest) {
+  const wrappedHandler = withPerformanceTracking(async (req) => {
+    return await withRLS(req, async (req) => {
       try {
         console.log('[API Repository] Iniciando busca...')
         const user = await auth();
@@ -37,5 +37,7 @@ export async function GET(request: Request) {
       }
     });
   });
+
+  return wrappedHandler(request);
 }
 
