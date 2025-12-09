@@ -7,6 +7,7 @@ import { ptBR } from 'date-fns/locale/pt-BR'
 import { FileSlotRepository } from './FileSlotRepository'
 import { formatTime } from '../lib/utils'
 import { SLOT_FILE_LIMITS, getFileTooLargeError } from '@/lib/constants/fileLimits'
+import { PDFViewerModal } from './PDFViewerModal'
 
 // Tipos de dados
 interface FileInfo {
@@ -168,6 +169,17 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
     url: string
     name: string
   } | null>(null)
+  const [pdfViewer, setPdfViewer] = useState<{
+    isOpen: boolean
+    fileUrl: string
+    fileName: string
+    fileId: string
+  }>({
+    isOpen: false,
+    fileUrl: '',
+    fileName: '',
+    fileId: ''
+  })
   useEffect(() => {
     setCurrentDateStr(format(new Date(), 'dd/MM/yyyy - EEEE', { locale: ptBR }))
   }, [])
@@ -410,10 +422,23 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                           // Visualizar
                           const handleView = () => {
                             if (file && file.url) {
-                              if (file.url.startsWith('data:')) {
+                              // Detectar se é PDF
+                              const isPDF = file.name.toLowerCase().endsWith('.pdf') || 
+                                           file.type === 'application/pdf' ||
+                                           file.url.toLowerCase().includes('.pdf')
+                              
+                              if (isPDF && file.id) {
+                                // Abrir modal para PDFs
+                                setPdfViewer({
+                                  isOpen: true,
+                                  fileUrl: file.url,
+                                  fileName: file.name,
+                                  fileId: file.id
+                                })
+                              } else if (file.url.startsWith('data:')) {
                                 setPreviewFile({ url: file.url, name: file.name })
                               } else if (file.id) {
-                                // Usar API de download para arquivos persistidos (melhor para PDFs)
+                                // Usar API de download para outros arquivos persistidos
                                 const downloadUrl = `/api/files/${file.id}/download`
                                 window.open(downloadUrl, '_blank')
                               } else {
@@ -531,10 +556,23 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                           <button
                             onClick={() => {
                               if (orphanFile.url) {
-                                if (orphanFile.url.startsWith('data:')) {
+                                // Detectar se é PDF
+                                const isPDF = orphanFile.name.toLowerCase().endsWith('.pdf') || 
+                                             orphanFile.type === 'application/pdf' ||
+                                             orphanFile.url.toLowerCase().includes('.pdf')
+                                
+                                if (isPDF && orphanFile.id) {
+                                  // Abrir modal para PDFs
+                                  setPdfViewer({
+                                    isOpen: true,
+                                    fileUrl: orphanFile.url,
+                                    fileName: orphanFile.name,
+                                    fileId: orphanFile.id
+                                  })
+                                } else if (orphanFile.url.startsWith('data:')) {
                                   setPreviewFile({ url: orphanFile.url, name: orphanFile.name })
                                 } else if (orphanFile.id) {
-                                  // Usar API de download para arquivos persistidos (melhor para PDFs)
+                                  // Usar API de download para outros arquivos persistidos
                                   const downloadUrl = `/api/files/${orphanFile.id}/download`
                                   window.open(downloadUrl, '_blank')
                                 } else {
@@ -659,6 +697,15 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
           </div>
         </div>
       )}
+
+      {/* Modal avançado para visualização de PDFs */}
+      <PDFViewerModal
+        isOpen={pdfViewer.isOpen}
+        onClose={() => setPdfViewer({ isOpen: false, fileUrl: '', fileName: '', fileId: '' })}
+        fileUrl={pdfViewer.fileUrl}
+        fileName={pdfViewer.fileName}
+        fileId={pdfViewer.fileId}
+      />
     </div>
   )
 }

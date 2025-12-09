@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { DeleteEventModal } from './DeleteEventModal'
 import { ShareModal } from './ShareModal'
+import { PDFViewerModal } from './PDFViewerModal'
 import { formatTime } from '../lib/utils'
 import { UploadProgressIndicator } from './ui/loading-states'
 import { SLOT_FILE_LIMITS, getFileTooLargeError } from '@/lib/constants/fileLimits'
@@ -253,6 +254,19 @@ export function EventCard({
     type: string
     url?: string
   } | null>(null)
+  
+  const [pdfViewer, setPdfViewer] = useState<{
+    isOpen: boolean
+    fileId: string
+    fileName: string
+    fileUrl: string
+  }>({
+    isOpen: false,
+    fileId: '',
+    fileName: '',
+    fileUrl: ''
+  })
+  
   return (
     <>
       <div
@@ -424,17 +438,24 @@ export function EventCard({
                                 // Para URLs de dados (base64), mostrar no modal de preview
                                 if (slot.url.startsWith('data:')) {
                                   setPreviewFile({
-                                    file: null as any, // Usar null para indicar que é URL
+                                    file: null as any,
                                     type: slot.type,
                                     url: slot.url,
                                   })
+                                } else if (slot.id && (slot.url.includes('.pdf') || slot.name.toLowerCase().endsWith('.pdf'))) {
+                                  // PDFs: usar visualizador modal definitivo
+                                  setPdfViewer({
+                                    isOpen: true,
+                                    fileId: slot.id,
+                                    fileName: slot.name,
+                                    fileUrl: slot.url
+                                  })
                                 } else if (slot.id) {
-                                  // Usar API de download para arquivos persistidos (melhor para PDFs)
-                                  // Garante Content-Type correto e autorização
+                                  // Outros arquivos: usar API de download
                                   const downloadUrl = `/api/files/${slot.id}/download`
                                   window.open(downloadUrl, '_blank')
                                 } else {
-                                  // Fallback para URL direta se não houver ID
+                                  // Fallback para URL direta
                                   window.open(slot.url, '_blank')
                                 }
                               } else if (slot.file) {
@@ -874,6 +895,15 @@ export function EventCard({
         open={showShareModal}
         onOpenChange={setShowShareModal}
         event={event}
+      />
+
+      {/* Modal de Visualização de PDF */}
+      <PDFViewerModal
+        isOpen={pdfViewer.isOpen}
+        onClose={() => setPdfViewer({ ...pdfViewer, isOpen: false })}
+        fileId={pdfViewer.fileId}
+        fileName={pdfViewer.fileName}
+        fileUrl={pdfViewer.fileUrl}
       />
     </>
   )
