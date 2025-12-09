@@ -41,6 +41,24 @@ Após deploy em produção, você precisa executar o script `fix-rls-functions.t
    npx tsx scripts/fix-rls-functions.ts
    ```
 
+   **Saída esperada:**
+   ```
+   🔍 Verificando funções RLS no banco de dados...
+
+   Status das funções:
+     ✓ set_rls_context(): ❌ Não encontrada
+     ✓ clear_rls_context(): ❌ Não encontrada
+
+   🔧 Criando funções RLS ausentes...
+   ✅ Funções RLS criadas com sucesso!
+
+   Verificação pós-criação:
+     ✓ set_rls_context(): ✅ Existe
+     ✓ clear_rls_context(): ✅ Existe
+
+   ✅ Script concluído com sucesso!
+   ```
+
 ### Método 2: Usando ts-node Diretamente
 
 Se `tsx` não estiver disponível, use `ts-node`:
@@ -169,7 +187,35 @@ npm install -g tsx
 npx tsx scripts/fix-rls-functions.ts
 ```
 
-### Erro: "Cannot connect to database"
+### Erro: "Cannot find module 'scripts/fix-rls-functions.ts'"
+
+**Sintomas:**
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\apps\HM\Omni\scripts\fix-rls-functions.ts'
+```
+
+**Causa:** O comando foi executado no diretório raiz do projeto em vez do diretório `web`.
+
+**Solução:**
+```bash
+# Execute no diretório correto
+cd web
+npx tsx scripts/fix-rls-functions.ts
+
+# Ou execute diretamente:
+cd web && npx tsx scripts/fix-rls-functions.ts
+```
+
+### Erro: "cannot insert multiple commands into a prepared statement"
+
+**Sintomas:**
+```
+ERROR: cannot insert multiple commands into a prepared statement
+```
+
+**Causa:** O script tentou executar múltiplas declarações SQL em uma única chamada.
+
+**Status:** ✅ **CORRIGIDO** - O script agora executa cada função separadamente.
 
 **Solução:**
 
