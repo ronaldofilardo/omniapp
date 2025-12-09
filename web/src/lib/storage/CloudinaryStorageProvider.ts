@@ -58,6 +58,7 @@ export class CloudinaryStorageProvider implements StorageProvider {
       });
 
       const fileId = uploadResult.public_id;
+      // Usar a URL segura retornada pelo Cloudinary (já tem o resource_type correto)
       const url = uploadResult.secure_url;
 
       return {
@@ -66,7 +67,7 @@ export class CloudinaryStorageProvider implements StorageProvider {
         url,
         metadata: {
           id: fileId,
-          name: filename,
+          name: cleanFilename,
           size: file.size,
           mimeType: file.type,
           uploadedAt: new Date().toISOString(),
@@ -87,13 +88,17 @@ export class CloudinaryStorageProvider implements StorageProvider {
   }
 
   async getUrl(fileId: string): Promise<string> {
-    // Cloudinary URLs are public
-    return `https://res.cloudinary.com/${this.cloudName}/image/upload/${fileId}`;
+    // Cloudinary URLs são públicas
+    // Se o fileId termina com .pdf, usar 'raw', senão 'image'
+    const resourceType = fileId.toLowerCase().endsWith('.pdf') ? 'raw' : 'image';
+    return `https://res.cloudinary.com/${this.cloudName}/${resourceType}/upload/${fileId}`;
   }
 
   async delete(fileId: string): Promise<boolean> {
     try {
-      await cloudinary.uploader.destroy(fileId);
+      // Detectar resource_type baseado na extensão
+      const resourceType = fileId.toLowerCase().endsWith('.pdf') ? 'raw' : 'image';
+      await cloudinary.uploader.destroy(fileId, { resource_type: resourceType });
       return true;
     } catch (error) {
       console.error('Cloudinary delete error:', error);
