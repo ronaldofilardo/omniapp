@@ -412,7 +412,12 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                             if (file && file.url) {
                               if (file.url.startsWith('data:')) {
                                 setPreviewFile({ url: file.url, name: file.name })
+                              } else if (file.id) {
+                                // Usar API de download para arquivos persistidos (melhor para PDFs)
+                                const downloadUrl = `/api/files/${file.id}/download`
+                                window.open(downloadUrl, '_blank')
                               } else {
+                                // Fallback para URL direta
                                 window.open(file.url, '_blank')
                               }
                             }
@@ -528,7 +533,12 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                               if (orphanFile.url) {
                                 if (orphanFile.url.startsWith('data:')) {
                                   setPreviewFile({ url: orphanFile.url, name: orphanFile.name })
+                                } else if (orphanFile.id) {
+                                  // Usar API de download para arquivos persistidos (melhor para PDFs)
+                                  const downloadUrl = `/api/files/${orphanFile.id}/download`
+                                  window.open(downloadUrl, '_blank')
                                 } else {
+                                  // Fallback para URL direta
                                   window.open(orphanFile.url, '_blank')
                                 }
                               }

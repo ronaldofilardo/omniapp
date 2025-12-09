@@ -428,8 +428,13 @@ export function EventCard({
                                     type: slot.type,
                                     url: slot.url,
                                   })
+                                } else if (slot.id) {
+                                  // Usar API de download para arquivos persistidos (melhor para PDFs)
+                                  // Garante Content-Type correto e autorização
+                                  const downloadUrl = `/api/files/${slot.id}/download`
+                                  window.open(downloadUrl, '_blank')
                                 } else {
-                                  // Abrir arquivo persistido em nova aba
+                                  // Fallback para URL direta se não houver ID
                                   window.open(slot.url, '_blank')
                                 }
                               } else if (slot.file) {
