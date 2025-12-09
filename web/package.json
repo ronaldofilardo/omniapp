@@ -11,6 +11,7 @@
     "build": "pnpm check-deps && pnpm prisma:generate && next build",
     "start": "next start",
     "check-deps": "node scripts/check-dependencies.js",
+    "fix:rls": "ts-node --transpile-only scripts/fix-rls-functions.ts",
     "test": "pnpm test:unit && pnpm test:integration",
     "test:all": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
     "test:watch": "node scripts/ensure-test-db.js && ts-node --transpile-only scripts/reset-test-db.ts && cross-env NODE_ENV=test vitest",
