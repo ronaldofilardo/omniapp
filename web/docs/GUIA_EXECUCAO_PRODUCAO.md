@@ -9,6 +9,7 @@ Após deploy em produção, você precisa executar o script `fix-rls-functions.t
 ### Método 1: Usando Script NPM (Recomendado)
 
 **Pré-requisitos:**
+
 - Acesso SSH ao servidor de produção
 - Node.js e pnpm instalados
 - Projeto já deployado
@@ -16,16 +17,19 @@ Após deploy em produção, você precisa executar o script `fix-rls-functions.t
 **Passos:**
 
 1. **Conectar ao servidor:**
+
    ```bash
    ssh usuario@servidor-producao
    ```
 
 2. **Navegar para o diretório do projeto:**
+
    ```bash
    cd /caminho/para/o/projeto/web
    ```
 
 3. **Executar o script:**
+
    ```bash
    # Usando pnpm (recomendado)
    pnpm run fix:rls
@@ -130,11 +134,13 @@ pm2 logs
 ```
 
 **Logs esperados:**
+
 ```
 ✅ [RLS] Contexto configurado: userId=..., role=..., isSystem=...
 ```
 
 **Logs que NÃO devem aparecer:**
+
 ```
 ❌ [RLS] ❌ Erro ao configurar contexto
 ❌ [RLS] Tentando configuração de fallback...
@@ -154,6 +160,7 @@ pm2 logs
 ### Erro: "tsx command not found"
 
 **Solução:**
+
 ```bash
 # Instalar tsx globalmente
 npm install -g tsx
@@ -165,6 +172,7 @@ npx tsx scripts/fix-rls-functions.ts
 ### Erro: "Cannot connect to database"
 
 **Solução:**
+
 ```bash
 # Verificar DATABASE_URL
 echo $DATABASE_URL
@@ -179,6 +187,7 @@ netstat -tlnp | grep 5432
 ### Erro: "Permission denied"
 
 **Solução:**
+
 ```bash
 # Verificar permissões do usuário
 whoami
@@ -191,6 +200,7 @@ sudo -u app-user pnpm run fix:rls
 ### Erro: "Script timeout"
 
 **Solução:**
+
 ```bash
 # Aumentar timeout se necessário
 timeout 300 npx tsx scripts/fix-rls-functions.ts
@@ -235,12 +245,14 @@ ssh usuario@servidor 'cd /path/to/project && pnpm run fix:rls'
 Se encontrar problemas:
 
 1. **Colete informações:**
+
    - Logs completos do script
    - Configuração do banco
    - Versão do Node.js (`node --version`)
    - Sistema operacional
 
 2. **Verifique documentação:**
+
    - `docs/TROUBLESHOOTING_PRODUCAO.md`
    - `docs/RESUMO_CORRECOES_PRODUCAO.md`
 

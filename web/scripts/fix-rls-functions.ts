@@ -14,12 +14,8 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-const RLS_FUNCTIONS_SQL = `
--- =====================================================
--- FUNÇÕES RLS (Row-Level Security)
--- =====================================================
-
--- Função para definir o contexto do usuário
+const RLS_FUNCTIONS_SQL = [
+  `-- Função para definir o contexto do usuário
 CREATE OR REPLACE FUNCTION set_rls_context(user_id TEXT, user_role TEXT, is_system BOOLEAN DEFAULT false)
 RETURNS VOID AS $$
 BEGIN
@@ -27,9 +23,9 @@ BEGIN
   PERFORM set_config('app.role', user_role, false);
   PERFORM set_config('app.system', is_system::text, false);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;`,
 
--- Função para limpar o contexto
+  `-- Função para limpar o contexto
 CREATE OR REPLACE FUNCTION clear_rls_context()
 RETURNS VOID AS $$
 BEGIN
@@ -37,8 +33,8 @@ BEGIN
   PERFORM set_config('app.role', '', false);
   PERFORM set_config('app.system', 'false', false);
 END;
-$$ LANGUAGE plpgsql;
-`
+$$ LANGUAGE plpgsql;`
+]
 
 async function checkFunctionExists(functionName: string): Promise<boolean> {
   try {
@@ -76,7 +72,10 @@ async function main() {
     // Criar funções se não existirem
     console.log('🔧 Criando funções RLS ausentes...')
     
-    await prisma.$executeRawUnsafe(RLS_FUNCTIONS_SQL)
+    // Executar cada função separadamente
+    for (const sql of RLS_FUNCTIONS_SQL) {
+      await prisma.$executeRawUnsafe(sql)
+    }
     
     console.log('✅ Funções RLS criadas com sucesso!')
     console.log('')
