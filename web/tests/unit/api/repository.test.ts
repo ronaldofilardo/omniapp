@@ -5,6 +5,25 @@ vi.mock('../../../src/lib/auth', () => ({
   auth: vi.fn(),
 }))
 
+// Mock performance metrics
+vi.mock('../../../src/lib/monitoring/performanceMetrics', () => ({
+  recordRequestMetric: vi.fn(),
+  createTimer: vi.fn(() => ({ stop: vi.fn(() => 100) })),
+}))
+
+// Mock middlewares
+vi.mock('../../../src/lib/middleware/rls', () => ({
+  withRLS: vi.fn(async (req, handler) => {
+    return await handler(req)
+  }),
+}))
+
+vi.mock('../../../src/lib/middleware/performanceMiddleware', () => ({
+  withPerformanceTracking: vi.fn(async (handler) => {
+    return await handler()
+  }),
+}))
+
 // Mock do lib/prisma.ts antes de importar a rota
 vi.mock('../../../src/lib/prisma', () => ({
   prisma: {
@@ -14,6 +33,7 @@ vi.mock('../../../src/lib/prisma', () => ({
     healthEvent: {
       findMany: vi.fn(),
     },
+    $executeRawUnsafe: vi.fn(),
   },
 }))
 

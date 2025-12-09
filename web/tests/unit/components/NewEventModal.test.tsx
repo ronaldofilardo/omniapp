@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useEffect } from 'react'
 import NewEventModal from '@/components/NewEventModal'
 import { EventsProvider } from '@/contexts/EventsContext'
 import { http, HttpResponse } from 'msw'
@@ -20,7 +21,13 @@ vi.mock('../AddProfessionalModal', () => ({
       address: string
       contact: string
     }) => void
-  }) => (open ? <div>AddProfessionalModal Mock</div> : null),
+  }) => {
+    // Evitar qualquer efeito colateral ou chamadas assíncronas
+    useEffect(() => {
+      // Mock vazio para prevenir fetchSpecialties
+    }, [])
+    return open ? <div>AddProfessionalModal Mock</div> : null
+  },
 }))
 
 vi.mock('@/components/EventForm', () => ({

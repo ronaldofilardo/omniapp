@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
+import { useEffect } from 'react'
 import EditEventModal from '@/components/EditEventModal'
 
 // Mock dos componentes da pasta edit-event
@@ -125,7 +126,13 @@ vi.mock('../../../src/components/AddProfessionalModal', () => ({
       address: string
       contact: string
     }) => void
-  }) => (open ? <div data-testid="add-professional-modal">AddProfessionalModal Mock</div> : null),
+  }) => {
+    // Evitar qualquer efeito colateral ou chamadas assíncronas
+    useEffect(() => {
+      // Mock vazio para prevenir fetchSpecialties
+    }, [])
+    return open ? <div data-testid="add-professional-modal">AddProfessionalModal Mock</div> : null
+  },
 }))
 
 

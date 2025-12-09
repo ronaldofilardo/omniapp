@@ -108,6 +108,7 @@ export const EventsProvider: React.FC<EventsProviderProps> = ({ children, userId
         }
       )
       
+      console.log('[EventsContext] Eventos recebidos da API:', data.length, 'IDs:', data.map(e => e.id))
       setEvents(data)
       lastFetch.current.events = Date.now()
       

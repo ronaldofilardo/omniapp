@@ -706,6 +706,7 @@ export async function GET(req: NextRequest) {
         );
 
         console.log(`[API Events] Encontrados ${data.events.length} eventos${fromCache ? ' (cache)' : ' (database)'}`);
+        console.log(`[API Events] IDs dos eventos:`, data.events.map(e => e.id));
 
         const response = createJsonResponse(data, { status: 200 });
         

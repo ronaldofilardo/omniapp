@@ -18,7 +18,7 @@ vi.mock('../../../src/components/AddSpecialtyModal', () => ({
 // Mock globalCache
 vi.mock('../../../src/lib/globalCache', () => ({
   globalCache: {
-    fetchWithDeduplication: vi.fn()
+    fetchWithDeduplication: vi.fn(() => Promise.resolve(['Cardiologia', 'Dermatologia']))
   }
 }))
 

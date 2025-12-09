@@ -198,6 +198,7 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
         )
         
         console.log('[RepositoryTab] Dados recebidos:', repositoryData)
+        console.log('[RepositoryTab] Eventos recebidos:', Array.isArray(repositoryData) ? repositoryData.length : 0, 'IDs:', Array.isArray(repositoryData) ? repositoryData.map(e => e.id) : [])
         setEvents(Array.isArray(repositoryData) ? repositoryData : [])
 
         // Fetch orphan files with cache

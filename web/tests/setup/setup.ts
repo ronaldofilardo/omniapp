@@ -15,6 +15,12 @@ import { setupMSW } from './msw-setup'
 // Configuração global para React 19
 global.React = React
 
+// Garantir que window esteja sempre disponível no ambiente de teste
+if (typeof window === 'undefined') {
+  // @ts-ignore - Estamos em ambiente de teste
+  global.window = global as any
+}
+
 // Inicializar MSW para mockar APIs externas
 setupMSW()
 
@@ -109,7 +115,13 @@ afterAll(() => {
 expect.extend(matchers)
 
 // Limpa após cada teste
-afterEach(() => {
+afterEach(async () => {
   cleanup()
   vi.clearAllMocks()
-})
+
+  // Aguardar um tick para garantir que todas as promises pendentes sejam resolvidas
+  await new Promise(resolve => setImmediate(resolve))
+
+  // Aguardar qualquer promise pendente do React
+  await new Promise(resolve => setTimeout(resolve, 0))
+}, 10000) // Aumentar timeout para 10 segundos

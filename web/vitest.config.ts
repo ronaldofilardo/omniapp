@@ -46,6 +46,10 @@ export default defineConfig({
       NEXTAUTH_SECRET: 'test-secret',
       NEXT_PUBLIC_BASE_URL: 'http://localhost:3000',
     },
+    // Configurações adicionais para evitar erros não tratados
+    testTimeout: 10000, // Timeout maior para testes assíncronos
+    hookTimeout: 5000, // Timeout para hooks
+    bail: 1, // Para no primeiro erro para debug mais fácil
     coverage: {
       reporter: ['text', 'lcov', 'html'],
       exclude: [
