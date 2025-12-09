@@ -596,6 +596,13 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                 alt={previewFile.name}
                 className="max-h-[600px] object-contain"
               />
+            ) : previewFile.url.includes('.pdf') || previewFile.url.toLowerCase().endsWith('.pdf') ? (
+              // PDF via URL (Cloudinary ou outro)
+              <iframe
+                src={previewFile.url}
+                className="w-full h-[600px] border rounded"
+                title={`PDF Preview: ${previewFile.name}`}
+              />
             ) : (
               <div className="text-center py-8">
                 <Info className="w-16 h-16 mx-auto text-gray-400" />

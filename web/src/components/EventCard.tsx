@@ -778,14 +778,23 @@ export function EventCard({
               </button>
             </div>
             {previewFile.url ? (
-              // Para URLs de dados (base64)
+              // Para URLs
               previewFile.url.startsWith('data:image/') ? (
+                // Base64 image
                 <img
                   src={previewFile.url}
                   alt={previewFile.type}
                   className="max-h-[600px] object-contain"
                 />
+              ) : previewFile.url.includes('.pdf') || previewFile.url.toLowerCase().endsWith('.pdf') ? (
+                // PDF via URL (Cloudinary ou outro)
+                <iframe
+                  src={previewFile.url}
+                  className="w-full h-[600px] border rounded"
+                  title={`PDF Preview: ${previewFile.type}`}
+                />
               ) : (
+                // Outros arquivos
                 <div className="text-center py-8">
                   <FileText className="w-16 h-16 mx-auto text-gray-400" />
                   <p className="mt-2">Arquivo: {previewFile.type}</p>

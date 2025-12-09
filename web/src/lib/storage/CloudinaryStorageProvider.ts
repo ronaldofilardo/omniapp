@@ -31,14 +31,23 @@ export class CloudinaryStorageProvider implements StorageProvider {
   async upload(file: File, options: UploadOptions = {}): Promise<StorageResult> {
     try {
       const filename = options.filename || file.name;
+      // Remover extensão duplicada se existir (ex: file.pdf.pdf -> file.pdf)
+      const cleanFilename = filename.replace(/\.(\w+)\.\1$/, '.$1');
+      // Remover extensão do public_id para evitar duplicação
+      const publicId = cleanFilename.replace(/\.[^.]+$/, '');
       const buffer = Buffer.from(await file.arrayBuffer());
+
+      // Detectar tipo de arquivo (PDF precisa de resource_type 'raw')
+      const isPdf = file.type === 'application/pdf' || cleanFilename.toLowerCase().endsWith('.pdf');
+      const resourceType = isPdf ? 'raw' : 'auto';
 
       const uploadResult = await new Promise<any>((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
-            public_id: filename,
-            resource_type: 'auto',
+            public_id: publicId,
+            resource_type: resourceType,
             folder: 'omni-files',
+            format: isPdf ? 'pdf' : undefined,
           },
           (error, result) => {
             if (error) reject(error);
@@ -94,14 +103,29 @@ export class CloudinaryStorageProvider implements StorageProvider {
 
   async getMetadata(fileId: string): Promise<FileMetadata | null> {
     try {
-      // Get resource details from Cloudinary
-      const result = await cloudinary.api.resource(fileId, { resource_type: 'image' });
+      // Tentar primeiro como 'raw' (para PDFs), depois como 'image'
+      let result;
+      try {
+        result = await cloudinary.api.resource(fileId, { resource_type: 'raw' });
+      } catch {
+        result = await cloudinary.api.resource(fileId, { resource_type: 'image' });
+      }
+
+      // Detectar MIME type correto baseado no formato
+      let mimeType = 'application/octet-stream';
+      if (result.format) {
+        if (result.format === 'pdf') {
+          mimeType = 'application/pdf';
+        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(result.format.toLowerCase())) {
+          mimeType = `image/${result.format}`;
+        }
+      }
 
       return {
         id: fileId,
         name: result.public_id,
         size: result.bytes,
-        mimeType: result.format ? `image/${result.format}` : 'application/octet-stream',
+        mimeType,
         uploadedAt: new Date(result.created_at).toISOString(),
         url: result.secure_url,
         hash: result.etag,

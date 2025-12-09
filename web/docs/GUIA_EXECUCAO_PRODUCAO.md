@@ -42,6 +42,7 @@ Após deploy em produção, você precisa executar o script `fix-rls-functions.t
    ```
 
    **Saída esperada:**
+
    ```
    🔍 Verificando funções RLS no banco de dados...
 
@@ -190,6 +191,7 @@ npx tsx scripts/fix-rls-functions.ts
 ### Erro: "Cannot find module 'scripts/fix-rls-functions.ts'"
 
 **Sintomas:**
+
 ```
 Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\apps\HM\Omni\scripts\fix-rls-functions.ts'
 ```
@@ -197,6 +199,7 @@ Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\apps\HM\Omni\scripts\fix-rl
 **Causa:** O comando foi executado no diretório raiz do projeto em vez do diretório `web`.
 
 **Solução:**
+
 ```bash
 # Execute no diretório correto
 cd web
@@ -209,6 +212,7 @@ cd web && npx tsx scripts/fix-rls-functions.ts
 ### Erro: "cannot insert multiple commands into a prepared statement"
 
 **Sintomas:**
+
 ```
 ERROR: cannot insert multiple commands into a prepared statement
 ```
