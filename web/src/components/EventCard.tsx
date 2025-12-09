@@ -787,12 +787,45 @@ export function EventCard({
                   className="max-h-[600px] object-contain"
                 />
               ) : previewFile.url.includes('.pdf') || previewFile.url.toLowerCase().endsWith('.pdf') ? (
-                // PDF via URL (Cloudinary ou outro)
-                <iframe
-                  src={previewFile.url}
-                  className="w-full h-[600px] border rounded"
-                  title={`PDF Preview: ${previewFile.type}`}
-                />
+                // PDF via URL - Múltiplas estratégias de visualização
+                <div className="w-full space-y-4">
+                  {/* Opção 1: Tentar iframe com fallback */}
+                  <iframe
+                    src={previewFile.url}
+                    className="w-full h-[600px] border rounded"
+                    title={`PDF Preview: ${previewFile.type}`}
+                    onError={(e) => {
+                      console.error('Erro ao carregar PDF no iframe:', e)
+                      // Esconder iframe se falhar
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                  {/* Opção 2: Link direto sempre disponível */}
+                  <div className="text-center py-4 space-y-3">
+                    <p className="text-sm text-gray-600">
+                      Se o PDF não carregar acima, use as opções abaixo:
+                    </p>
+                    <div className="flex gap-3 justify-center">
+                      <a
+                        href={previewFile.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Abrir em Nova Aba
+                      </a>
+                      <a
+                        href={previewFile.url}
+                        download
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Baixar PDF
+                      </a>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 // Outros arquivos
                 <div className="text-center py-8">

@@ -48,6 +48,10 @@ export class CloudinaryStorageProvider implements StorageProvider {
             resource_type: resourceType,
             folder: 'omni-files',
             format: isPdf ? 'pdf' : undefined,
+            // CRÍTICO: Tornar arquivos públicos
+            type: 'upload', // tipo de upload
+            access_mode: 'public', // acesso público
+            invalidate: true, // invalidar cache ao fazer upload
           },
           (error, result) => {
             if (error) reject(error);
