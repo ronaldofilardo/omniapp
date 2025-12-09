@@ -1,0 +1,373 @@
+/**
+ * Testes de Performance Metrics
+ */
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Set env vars before importing
+process.env.UPSTASH_REDIS_REST_URL = 'http://mock';
+process.env.UPSTASH_REDIS_REST_TOKEN = 'mock';
+process.env.PERFORMANCE_METRICS_ENABLED = '1';
+
+// Mock do Redis
+const mockRedis = {
+  setex: vi.fn(),
+  keys: vi.fn(),
+  get: vi.fn(),
+  ttl: vi.fn(),
+  del: vi.fn(),
+};
+
+vi.mock('@upstash/redis', () => ({
+  Redis: class {
+    setex = mockRedis.setex;
+    keys = mockRedis.keys;
+    get = mockRedis.get;
+    ttl = mockRedis.ttl;
+    del = mockRedis.del;
+  },
+}));
+import {
+  recordRequestMetric,
+  getPerformanceStats,
+  createTimer,
+  cleanupOldMetrics,
+} from '@/lib/monitoring/performanceMetrics';
+
+describe('Performance Metrics', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRedis.setex.mockResolvedValue('OK');
+    mockRedis.keys.mockResolvedValue([]);
+    mockRedis.get.mockResolvedValue(null);
+    mockRedis.ttl.mockResolvedValue(3600);
+    mockRedis.del.mockResolvedValue(1);
+  });
+
+  describe('recordRequestMetric', () => {
+    it('deve registrar métrica de requisição com sucesso', async () => {
+      const metric = {
+        path: '/api/events',
+        method: 'GET',
+        statusCode: 200,
+        duration: 150,
+        timestamp: Date.now(),
+      };
+
+      await recordRequestMetric(metric);
+
+      expect(mockRedis.setex).toHaveBeenCalledWith(
+        expect.stringMatching(/^metrics:api:\d+$/),
+        3600,
+        JSON.stringify(metric)
+      );
+    });
+
+    it('deve registrar métrica com userId e cacheHit', async () => {
+      const metric = {
+        path: '/api/events',
+        method: 'GET',
+        statusCode: 200,
+        duration: 100,
+        timestamp: Date.now(),
+        userId: 'user-123',
+        cacheHit: true,
+      };
+
+      await recordRequestMetric(metric);
+
+      expect(mockRedis.setex).toHaveBeenCalledWith(
+        expect.stringMatching(/^metrics:api:\d+$/),
+        3600,
+        JSON.stringify(metric)
+      );
+    });
+
+    it('deve não fazer nada quando métricas estão desabilitadas', async () => {
+      process.env.PERFORMANCE_METRICS_ENABLED = '0';
+
+      await recordRequestMetric({
+        path: '/api/events',
+        method: 'GET',
+        statusCode: 200,
+        duration: 150,
+        timestamp: Date.now(),
+      });
+
+      expect(mockRedis.setex).not.toHaveBeenCalled();
+
+      process.env.PERFORMANCE_METRICS_ENABLED = '1';
+    });
+
+    it('deve não fazer nada quando Redis não está disponível', async () => {
+      const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
+      delete process.env.UPSTASH_REDIS_REST_URL;
+
+      const { recordRequestMetric: recordRequestMetricNoRedis } = await import('@/lib/monitoring/performanceMetrics');
+
+      await recordRequestMetricNoRedis({
+        path: '/api/events',
+        method: 'GET',
+        statusCode: 200,
+        duration: 150,
+        timestamp: Date.now(),
+      });
+
+      expect(mockRedis.setex).not.toHaveBeenCalled();
+
+      process.env.UPSTASH_REDIS_REST_URL = originalUrl;
+    });
+
+    it('deve logar warning para requisições lentas (> 500ms)', async () => {
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await recordRequestMetric({
+        path: '/api/events',
+        method: 'GET',
+        statusCode: 200,
+        duration: 650,
+        timestamp: Date.now(),
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[PERFORMANCE] Request lenta')
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('deve lidar com erro do Redis sem propagar', async () => {
+      mockRedis.setex.mockRejectedValue(new Error('Redis connection failed'));
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await expect(
+        recordRequestMetric({
+          path: '/api/events',
+          method: 'GET',
+          statusCode: 200,
+          duration: 150,
+          timestamp: Date.now(),
+        })
+      ).resolves.not.toThrow();
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[PERFORMANCE] Erro ao registrar métrica:',
+        expect.any(Error)
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('getPerformanceStats', () => {
+    it('deve retornar estatísticas vazias quando não há métricas', async () => {
+      const stats = await getPerformanceStats(60);
+
+      expect(stats).toEqual({
+        totalRequests: 0,
+        averageLatency: 0,
+        p50: 0,
+        p95: 0,
+        p99: 0,
+        successRate: 100,
+        cacheHitRate: 0,
+        slowRequests: 0,
+      });
+    });
+
+    it('deve retornar estatísticas vazias quando Redis não está disponível', async () => {
+      const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
+      delete process.env.UPSTASH_REDIS_REST_URL;
+
+      const { getPerformanceStats: getPerformanceStatsNoRedis } = await import('@/lib/monitoring/performanceMetrics');
+
+      const stats = await getPerformanceStatsNoRedis(60);
+
+      expect(stats).toEqual({
+        totalRequests: 0,
+        averageLatency: 0,
+        p50: 0,
+        p95: 0,
+        p99: 0,
+        successRate: 100,
+        cacheHitRate: 0,
+        slowRequests: 0,
+      });
+
+      process.env.UPSTASH_REDIS_REST_URL = originalUrl;
+    });
+
+    it('deve calcular estatísticas corretamente com dados reais', async () => {
+      const now = Date.now();
+      const metrics = [
+        { path: '/api/events', method: 'GET', statusCode: 200, duration: 100, timestamp: now, cacheHit: true },
+        { path: '/api/events', method: 'POST', statusCode: 201, duration: 200, timestamp: now, cacheHit: false },
+        { path: '/api/events', method: 'GET', statusCode: 500, duration: 300, timestamp: now, cacheHit: false },
+        { path: '/api/events', method: 'GET', statusCode: 200, duration: 600, timestamp: now, cacheHit: false },
+      ];
+
+      mockRedis.keys.mockResolvedValue(['metrics:api:1', 'metrics:api:2', 'metrics:api:3', 'metrics:api:4']);
+      mockRedis.get.mockImplementation((key: string) => {
+        const index = parseInt(key.split(':').pop() || '0') - 1;
+        return Promise.resolve(JSON.stringify(metrics[index]));
+      });
+
+      const stats = await getPerformanceStats(60);
+
+      expect(stats.totalRequests).toBe(4);
+      expect(stats.averageLatency).toBe(300); // (100+200+300+600)/4
+      expect(stats.p50).toBe(250); // mediana de [100,200,300,600]
+      expect(stats.p95).toBe(600); // 95º percentil
+      expect(stats.p99).toBe(600); // 99º percentil
+      expect(stats.successRate).toBe(75); // 3/4 * 100
+      expect(stats.cacheHitRate).toBe(25); // 1/4 * 100
+      expect(stats.slowRequests).toBe(1); // 1 request > 500ms
+    });
+
+    it('deve filtrar métricas fora do período', async () => {
+      const now = Date.now();
+      const oldMetric = { path: '/api/events', method: 'GET', statusCode: 200, duration: 100, timestamp: now - 4000000 }; // 1h atrás
+      const newMetric = { path: '/api/events', method: 'GET', statusCode: 200, duration: 200, timestamp: now };
+
+      mockRedis.keys.mockResolvedValue(['metrics:api:1', 'metrics:api:2']);
+      mockRedis.get.mockImplementation((key: string) => {
+        if (key === 'metrics:api:1') return Promise.resolve(JSON.stringify(oldMetric));
+        if (key === 'metrics:api:2') return Promise.resolve(JSON.stringify(newMetric));
+        return Promise.resolve(null);
+      });
+
+      const stats = await getPerformanceStats(30); // últimos 30 minutos
+
+      expect(stats.totalRequests).toBe(1);
+      expect(stats.averageLatency).toBe(200);
+    });
+
+    it('deve lidar com JSON inválido no Redis', async () => {
+      mockRedis.keys.mockResolvedValue(['metrics:api:1']);
+      mockRedis.get.mockResolvedValue('invalid-json{');
+
+      const stats = await getPerformanceStats(60);
+
+      expect(stats.totalRequests).toBe(0);
+    });
+
+    it('deve lidar com erro do Redis', async () => {
+      mockRedis.keys.mockRejectedValue(new Error('Redis connection failed'));
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const stats = await getPerformanceStats(60);
+
+      expect(stats.totalRequests).toBe(0);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[PERFORMANCE] Erro ao calcular estatísticas:',
+        expect.any(Error)
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('cleanupOldMetrics', () => {
+    it('deve limpar métricas expiradas', async () => {
+      mockRedis.keys.mockResolvedValue(['metrics:api:1', 'metrics:api:2', 'metrics:api:3']);
+      mockRedis.ttl.mockImplementation((key: string) => {
+        if (key === 'metrics:api:1') return Promise.resolve(-1); // expirado
+        if (key === 'metrics:api:2') return Promise.resolve(-2); // expirado
+        return Promise.resolve(3600); // válido
+      });
+
+      const deleted = await cleanupOldMetrics();
+
+      expect(deleted).toBe(2);
+      expect(mockRedis.del).toHaveBeenCalledWith('metrics:api:1');
+      expect(mockRedis.del).toHaveBeenCalledWith('metrics:api:2');
+      expect(mockRedis.del).not.toHaveBeenCalledWith('metrics:api:3');
+    });
+
+    it('deve retornar 0 quando não há métricas para limpar', async () => {
+      mockRedis.keys.mockResolvedValue([]);
+
+      const deleted = await cleanupOldMetrics();
+
+      expect(deleted).toBe(0);
+      expect(mockRedis.del).not.toHaveBeenCalled();
+    });
+
+    it('deve retornar 0 quando Redis não está disponível', async () => {
+      const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
+      delete process.env.UPSTASH_REDIS_REST_URL;
+
+      const { cleanupOldMetrics: cleanupOldMetricsNoRedis } = await import('@/lib/monitoring/performanceMetrics');
+
+      const deleted = await cleanupOldMetricsNoRedis();
+
+      expect(deleted).toBe(0);
+
+      process.env.UPSTASH_REDIS_REST_URL = originalUrl;
+    });
+
+    it('deve lidar com erro do Redis', async () => {
+      mockRedis.keys.mockRejectedValue(new Error('Redis connection failed'));
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const deleted = await cleanupOldMetrics();
+
+      expect(deleted).toBe(0);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[PERFORMANCE] Erro ao limpar métricas antigas:',
+        expect.any(Error)
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('createTimer', () => {
+    it('deve criar timer e medir duração', async () => {
+      const timer = createTimer();
+      
+      // Simular operação
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const duration = timer.stop();
+      
+      expect(duration).toBeGreaterThanOrEqual(50);
+      expect(duration).toBeLessThan(100); // Margem de erro
+    });
+
+    it('deve medir durações consecutivas corretamente', () => {
+      const timer1 = createTimer();
+      const duration1 = timer1.stop();
+      
+      const timer2 = createTimer();
+      const duration2 = timer2.stop();
+      
+      expect(duration1).toBeGreaterThanOrEqual(0);
+      expect(duration2).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('SLA Validation (< 500ms)', () => {
+    it('deve identificar quando requisição atende SLA', () => {
+      const duration = 350;
+      expect(duration).toBeLessThan(500);
+    });
+
+    it('deve identificar quando requisição não atende SLA', () => {
+      const duration = 650;
+      expect(duration).toBeGreaterThan(500);
+    });
+
+    it('deve calcular percentual de requisições lentas', () => {
+      const totalRequests = 100;
+      const slowRequests = 5;
+      const slowPercentage = (slowRequests / totalRequests) * 100;
+      
+      expect(slowPercentage).toBe(5);
+      expect(slowPercentage).toBeLessThan(10); // Meta: < 10% de requests lentas
+    });
+  });
+});

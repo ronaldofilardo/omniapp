@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// RLS enabled: Users can only access their own data; admins can access all
+model User {
+  id                    String         @id @default(cuid())
+  email                 String         @unique
+  password              String
+  name                  String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  cpf                   String?
+  telefone              String?
+  role                  UserRole       @default(RECEPTOR)
+  acceptedPrivacyPolicy Boolean        @default(false)
+  acceptedTermsOfUse    Boolean        @default(false)
+  emailVerified         DateTime?
+  emissorInfo           EmissorInfo?
+  events                HealthEvent[]
+  notifications         Notification[]
+  professionals         Professional[]
+  receivedReports       Report[]       @relation("ReceivedReports")
+  sentReports           Report[]       @relation("SentReports")
+
+  @@map("users")
+}
+
+model Professional {
+  id        String        @id @default(cuid())
+  name      String
+  specialty String
+  address   String?
+  contact   String?
+  userId    String
+  files     files[]
+  events    HealthEvent[]
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("professionals")
+}
+
+model HealthEvent {
+  id             String       @id @default(cuid())
+  title          String
+  description    String?
+  date           DateTime
+  type           EventType
+  userId         String
+  endTime        DateTime
+  professionalId String
+  startTime      DateTime
+  observation    String?
+  files          files[]
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("health_events")
+}
+
+model EmissorInfo {
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  clinicName String
+  cnpj       String?
+  address    String?
+  contact    String?
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("emissor_info")
+}
+
+// RLS enabled: Users can only access reports they sent or received; admins can access all
+model Report {
+  id             String        @id @default(cuid())
+  protocol       String        @unique
+  title          String
+  fileName       String
+  fileUrl        String
+  status         ReportStatus  @default(SENT)
+  senderId       String
+  receiverId     String
+  sentAt         DateTime      @default(now())
+  receivedAt     DateTime?
+  viewedAt       DateTime?
+  notificationId String?       @unique
+  paciente_id    String?
+  notification   Notification? @relation(fields: [notificationId], references: [id])
+  receiver       User          @relation("ReceivedReports", fields: [receiverId], references: [id])
+  sender         User          @relation("SentReports", fields: [senderId], references: [id])
+
+  @@map("reports")
+}
+
+// RLS enabled: Users can only access their own notifications; admins can access all
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String
+  type      NotificationType
+  payload   Json
+  status    NotificationStatus @default(UNREAD)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  documento String?
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report    Report?
+
+  @@index([userId])
+  @@index([status])
+  @@map("notifications")
+}
+
+model files {
+  id             String        @id
+  eventId        String?
+  professionalId String?
+  slot           String
+  name           String
+  url            String
+  physicalPath   String
+  uploadDate     DateTime?
+  expiryDate     DateTime?
+  isOrphaned     Boolean       @default(false) @map("is_orphan")
+  orphanedReason String?       @map("orphaned_reason")
+  health_events  HealthEvent?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  professionals  Professional? @relation(fields: [professionalId], references: [id])
+  fileHash       String?
+}
+
+model AdminMetrics {
+  id                 String   @id @default("singleton")
+  totalFiles         Int      @default(0)
+  totalUploadBytes   BigInt   @default(0)
+  totalDownloadBytes BigInt   @default(0)
+  updatedAt          DateTime @updatedAt
+
+  @@map("admin_metrics")
+}
+
+enum UserRole {
+  RECEPTOR
+  EMISSOR
+  ADMIN
+}
+
+enum EventType {
+  CONSULTA
+  EXAME
+}
+
+enum NotificationType {
+  LAB_RESULT
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+enum ReportStatus {
+  SENT
+  DELIVERED
+  RECEIVED
+  VIEWED
+  ARCHIVED
+  FAILED
+}
+
+enum AuditOrigin {
+  API_EXTERNA
+  PORTAL_PUBLICO
+  PORTAL_LOGADO
+}
+
+enum AuditStatus {
+  SUCCESS
+  USER_NOT_FOUND
+  VALIDATION_ERROR
+  SERVER_ERROR
+  PROCESSING
+}
+
+model AuditLog {
+  id           String      @id @default(cuid())
+  action       String      @default("DOCUMENT_SUBMITTED")
+  origin       AuditOrigin
+  emitterCnpj  String?
+  receiverCpf  String
+  patientId    String?
+  patientName  String?
+  protocol     String?
+  fileName     String
+  fileHash     String?
+  documentType String?     @default("result")
+  ipAddress    String
+  userAgent    String?
+  status       AuditStatus @default(PROCESSING)
+  metadata     Json?
+  createdAt    DateTime    @default(now())
+  receivedAt   DateTime    @updatedAt
+
+  @@index([receiverCpf])
+  @@index([origin])
+  @@index([createdAt])
+  @@index([status])
+  @@index([fileHash])
+}
+
+model VerificationToken {
+  id         Int      @id @default(autoincrement())
+  identifier String // será o e-mail
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

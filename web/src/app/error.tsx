@@ -1,0 +1,81 @@
+'use client';
+
+import * as React from 'react';
+
+/**
+ * Error Boundary para o root da aplicação
+ * Captura erros em páginas e componentes filhos
+ */
+export default function RootError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  React.useEffect(() => {
+    console.error('RootError capturou:', {
+      message: error.message,
+      digest: error.digest,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+    });
+  }, [error]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="max-w-lg w-full bg-white border border-gray-200 rounded-lg shadow-lg p-8">
+        <div className="text-center">
+          <svg
+            className="mx-auto h-16 w-16 text-red-500 mb-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Ops! Algo deu errado
+          </h1>
+          <p className="text-gray-600 mb-6">
+            Não foi possível carregar esta página. Por favor, tente novamente.
+          </p>
+
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-6 text-left bg-gray-50 rounded p-4 border border-gray-200">
+              <details>
+                <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-2">
+                  Detalhes do erro (dev only)
+                </summary>
+                <pre className="text-xs text-red-600 overflow-auto max-h-32 mt-2">
+                  {error.message}
+                  {error.stack && `\n\n${error.stack}`}
+                </pre>
+              </details>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={reset}
+              className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium"
+            >
+              Tentar novamente
+            </button>
+            <button
+              onClick={() => window.location.href = '/'}
+              className="px-6 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors font-medium"
+            >
+              Voltar ao início
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
