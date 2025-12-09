@@ -3,14 +3,17 @@
 ## 📋 Problemas Identificados
 
 ### 1. ❌ Funções RLS Ausentes
+
 **Erro:** `ERROR: function set_rls_context(unknown, unknown, boolean) does not exist`
 
 **Causa:** As funções RLS não foram criadas no banco de produção (migrations não aplicadas corretamente).
 
 ### 2. ❌ PDFs Não Carregam
+
 **Erro:** "Falha ao carregar PDFs" (mas imagens funcionam)
 
 **Causas possíveis:**
+
 - Content-Type incorreto
 - CORS bloqueando recursos
 - URLs diretas bloqueadas pelo navegador
@@ -25,17 +28,20 @@
 **Arquivo criado:** `scripts/fix-rls-functions.ts`
 
 **Como usar em produção:**
+
 ```powershell
 # Execute este comando no servidor de produção
 npx tsx scripts/fix-rls-functions.ts
 ```
 
 **O que faz:**
+
 1. Verifica se as funções `set_rls_context` e `clear_rls_context` existem
 2. Cria as funções se estiverem ausentes
 3. Valida a criação
 
 **Resultado esperado:**
+
 ```
 ✅ Funções RLS criadas com sucesso!
 ✓ set_rls_context(): ✅ Existe
@@ -47,24 +53,27 @@ npx tsx scripts/fix-rls-functions.ts
 #### 2.1. Usar API de Download em Vez de URLs Diretas
 
 **Arquivos modificados:**
+
 - `src/components/EventCard.tsx`
 - `src/components/RepositoryTab.tsx`
 
 **Mudança:**
+
 ```typescript
 // ANTES - URLs diretas que podem falhar
-window.open(slot.url, '_blank')
+window.open(slot.url, "_blank");
 
 // DEPOIS - Usar API que garante Content-Type correto
 if (slot.id) {
-  const downloadUrl = `/api/files/${slot.id}/download`
-  window.open(downloadUrl, '_blank')
+  const downloadUrl = `/api/files/${slot.id}/download`;
+  window.open(downloadUrl, "_blank");
 } else {
-  window.open(slot.url, '_blank') // Fallback
+  window.open(slot.url, "_blank"); // Fallback
 }
 ```
 
 **Benefícios:**
+
 - ✅ Content-Type correto (`application/pdf`)
 - ✅ Autenticação e autorização
 - ✅ Logs de acesso
@@ -76,6 +85,7 @@ if (slot.id) {
 **Arquivo modificado:** `next.config.mjs`
 
 **Adicionado:**
+
 ```javascript
 async headers() {
   return [
@@ -109,6 +119,7 @@ async headers() {
 ```
 
 **Benefícios:**
+
 - ✅ PDFs servidos com Content-Type correto
 - ✅ Cache otimizado
 - ✅ Suporte a CORS quando necessário
@@ -120,6 +131,7 @@ async headers() {
 **Arquivo:** `docs/TROUBLESHOOTING_PRODUCAO.md`
 
 Contém:
+
 - ✅ Guia completo de troubleshooting
 - ✅ Diagnósticos passo a passo
 - ✅ Scripts de teste
@@ -131,6 +143,7 @@ Contém:
 ## 🚀 Próximos Passos para Deploy
 
 ### 1. Testar Localmente
+
 ```powershell
 # Rebuild do projeto
 pnpm build
@@ -142,6 +155,7 @@ pnpm start
 ```
 
 ### 2. Deploy para Produção
+
 ```powershell
 # Fazer commit das mudanças
 git add .
@@ -153,6 +167,7 @@ npx tsx scripts/fix-rls-functions.ts
 ```
 
 ### 3. Verificar em Produção
+
 - [ ] Logs sem erros RLS
 - [ ] PDFs carregam corretamente
 - [ ] Imagens continuam funcionando
@@ -163,16 +178,20 @@ npx tsx scripts/fix-rls-functions.ts
 ## 🔍 Como Verificar se Funcionou
 
 ### Verificar Funções RLS
+
 Conecte ao banco de produção e execute:
+
 ```sql
 SELECT proname, prosrc FROM pg_proc WHERE proname LIKE '%rls%';
 ```
 
 Deve retornar:
+
 - `set_rls_context`
 - `clear_rls_context`
 
 ### Verificar PDFs
+
 1. Faça login na aplicação
 2. Abra um evento que tenha PDF anexado
 3. Clique no botão "Visualizar" do PDF
@@ -180,12 +199,15 @@ Deve retornar:
 5. Verifique o console do navegador (F12) - não deve ter erros
 
 ### Verificar Logs do Servidor
+
 Os logs devem mostrar:
+
 ```
 ✅ [RLS] Contexto configurado: userId=..., role=..., isSystem=...
 ```
 
 E NÃO devem mostrar:
+
 ```
 ❌ [RLS] ❌ Erro ao configurar contexto
 ❌ [RLS] Tentando configuração de fallback...
@@ -196,6 +218,7 @@ E NÃO devem mostrar:
 ## 🆘 Se Ainda Não Funcionar
 
 ### Para PDFs:
+
 1. Abra o console do navegador (F12)
 2. Vá para a aba "Network"
 3. Tente carregar o PDF
@@ -206,6 +229,7 @@ E NÃO devem mostrar:
    - Se 404: arquivo não encontrado
 
 ### Para RLS:
+
 1. Verifique os logs do servidor
 2. Execute o script de diagnóstico:
    ```powershell
@@ -217,14 +241,14 @@ E NÃO devem mostrar:
 
 ## 📝 Resumo das Mudanças
 
-| Arquivo | Mudança | Motivo |
-|---------|---------|--------|
-| `scripts/fix-rls-functions.ts` | Novo arquivo | Criar funções RLS ausentes |
-| `src/components/EventCard.tsx` | Modificado | Usar API de download para PDFs |
-| `src/components/RepositoryTab.tsx` | Modificado | Usar API de download para PDFs |
-| `next.config.mjs` | Modificado | Headers corretos para PDFs |
-| `docs/TROUBLESHOOTING_PRODUCAO.md` | Novo arquivo | Guia de troubleshooting |
-| `docs/RESUMO_CORRECOES_PRODUCAO.md` | Novo arquivo | Este resumo |
+| Arquivo                             | Mudança      | Motivo                         |
+| ----------------------------------- | ------------ | ------------------------------ |
+| `scripts/fix-rls-functions.ts`      | Novo arquivo | Criar funções RLS ausentes     |
+| `src/components/EventCard.tsx`      | Modificado   | Usar API de download para PDFs |
+| `src/components/RepositoryTab.tsx`  | Modificado   | Usar API de download para PDFs |
+| `next.config.mjs`                   | Modificado   | Headers corretos para PDFs     |
+| `docs/TROUBLESHOOTING_PRODUCAO.md`  | Novo arquivo | Guia de troubleshooting        |
+| `docs/RESUMO_CORRECOES_PRODUCAO.md` | Novo arquivo | Este resumo                    |
 
 ---
 
