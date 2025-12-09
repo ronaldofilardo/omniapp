@@ -165,11 +165,15 @@ export async function GET(
     // Determinar tipo MIME
     const mimeType = getMimeType(file.name)
 
+    // Determinar se deve ser inline ou attachment
+    const isInlineType = mimeType.startsWith('image/') || mimeType === 'application/pdf'
+    const contentDisposition = isInlineType ? 'inline' : 'attachment'
+
     // Retornar arquivo
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': mimeType,
-        'Content-Disposition': `attachment; filename="${file.name}"`,
+        'Content-Disposition': `${contentDisposition}; filename="${file.name}"`,
       },
     })
   } catch (error) {

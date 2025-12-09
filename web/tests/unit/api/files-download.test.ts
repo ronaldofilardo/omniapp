@@ -126,7 +126,7 @@ describe('/api/files/[id]/download', () => {
 
       expect(response.status).toBe(200)
       expect(response.headers.get('Content-Type')).toBe('image/jpeg')
-      expect(response.headers.get('Content-Disposition')).toBe('attachment; filename="test.jpg"')
+      expect(response.headers.get('Content-Disposition')).toBe('inline; filename="test.jpg"')
       expect(Buffer.from(buffer)).toEqual(testFileContent)
 
       expect(prisma.adminMetrics.upsert).toHaveBeenCalledWith({
@@ -194,7 +194,7 @@ describe('/api/files/[id]/download', () => {
 
       expect(response.status).toBe(200)
       expect(response.headers.get('Content-Type')).toBe('application/pdf')
-      expect(response.headers.get('Content-Disposition')).toBe('attachment; filename="document.pdf"')
+      expect(response.headers.get('Content-Disposition')).toBe('inline; filename="document.pdf"')
       expect(Buffer.from(buffer)).toEqual(testFileContent)
     })
 
@@ -237,7 +237,7 @@ describe('/api/files/[id]/download', () => {
 
       expect(response.status).toBe(200)
       expect(response.headers.get('Content-Type')).toBe('image/png')
-      expect(response.headers.get('Content-Disposition')).toBe('attachment; filename="image.png"')
+      expect(response.headers.get('Content-Disposition')).toBe('inline; filename="image.png"')
       expect(Buffer.from(buffer)).toEqual(testFileContent)
     })
 
